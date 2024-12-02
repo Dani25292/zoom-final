@@ -5,7 +5,7 @@ d3.csv("updated_combined_data_with_russia.csv").then(data => {
 
   // Define color scale
   const colorScale = d3.scaleLinear()
-    .domain([1, 5]) // Assuming stability values between 1 (low) and 5 (high)
+    .domain([1, 5]) // Stability values between 1 (low) and 5 (high)
     .range(["#d73027", "#1a9850"]);
 
   // Create SVG
