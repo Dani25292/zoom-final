@@ -1,53 +1,50 @@
+// Load data
 d3.csv("updated_combined_data_with_russia.csv").then(data => {
-
   const width = 960;
   const height = 600;
+
+  // Define color scale
   const colorScale = d3.scaleLinear()
-                        .domain([1, 5]) // assuming 1 = unstable, 5 = very stable
-                        .range(["#d73027", "#1a9850"]); // red to green
+    .domain([1, 5]) // Assuming stability values between 1 (low) and 5 (high)
+    .range(["#d73027", "#1a9850"]);
 
+  // Create SVG
   const svg = d3.select("#map")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height);
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .call(
+      d3.zoom()
+        .scaleExtent([1, 8]) // Allow zoom between 1x and 8x
+        .on("zoom", (event) => {
+          svg.selectAll("g").attr("transform", event.transform);
+        })
+    )
+    .append("g");
 
-  // Create a zoom behavior
-  const zoom = d3.zoom()
-    .scaleExtent([1, 8]) // Set the zoom scale (1x to 8x zoom)
-    .translateExtent([[0, 0], [width, height]]) // Limit panning to the map's extent
-    .on("zoom", (event) => {
-      mapGroup.attr("transform", event.transform); // Apply the zoom transformation
-    });
+  // Tooltip for country names
+  const tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("background-color", "white")
+    .style("border", "1px solid black")
+    .style("padding", "5px")
+    .style("display", "none");
 
-  // Append a group to hold the map paths and enable zoom
-  const mapGroup = svg.append("g");
-
-  // Apply zoom to the SVG
-  d3.select("#map").select("svg").call(zoom);
-
-  const tooltip = d3.select("body").append("div")
-                    .attr("class", "tooltip")
-                    .style("position", "absolute")
-                    .style("background-color", "white")
-                    .style("border", "1px solid black")
-                    .style("padding", "5px")
-                    .style("display", "none");
-
+  // Load GeoJSON
   d3.json("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson").then(geoData => {
-    // Draw the map inside the group
-    mapGroup.selectAll("path")
+    // Draw map
+    svg.selectAll("path")
       .data(geoData.features)
       .enter()
       .append("path")
       .attr("d", d3.geoPath().projection(d3.geoMercator().scale(130).translate([width / 2, height / 1.5])))
       .attr("fill", d => {
-        const countryData = data.filter(row => row.Country === d.properties.name && row.StabilityEstimate > 0 && row.StabilityEstimate !== "..");
-        if (countryData.length > 0) {
-          const latestYearData = countryData.reduce((a, b) => (+a.Year > +b.Year ? a : b)); // Get the latest year
-          return colorScale(latestYearData.StabilityEstimate);
-        } else {
-          return "#f0f0f0"; // Gray for missing or invalid data
-        }
+        const countryData = data.find(row => row.Country === d.properties.name);
+        return countryData && countryData.StabilityEstimate !== ".."
+          ? colorScale(countryData.StabilityEstimate)
+          : "#f0f0f0"; // Gray for missing data
       })
       .attr("stroke", "#d3d3d3")
       .on("mouseover", (event, d) => {
@@ -56,12 +53,13 @@ d3.csv("updated_combined_data_with_russia.csv").then(data => {
       })
       .on("mousemove", event => {
         tooltip.style("left", (event.pageX + 10) + "px")
-               .style("top", (event.pageY - 20) + "px");
+          .style("top", (event.pageY - 20) + "px");
       })
       .on("mouseout", () => tooltip.style("display", "none"))
       .on("click", (event, d) => showCountryData(d.properties.name));
   }).catch(error => console.error("Error loading GeoJSON:", error));
 
+  // Function to display country data in graphs
   function showCountryData(country) {
     const countryData = data.filter(row => row.Country === country);
 
@@ -101,17 +99,13 @@ d3.csv("updated_combined_data_with_russia.csv").then(data => {
     const stabilityLayout = {
       title: `${country} - Political Stability Over Time`,
       xaxis: { title: 'Year' },
-      yaxis: { title: 'Stability Level', range: [0, 5] } // Fixed y-axis range for consistency
+      yaxis: {
+        title: 'Stability Level',
+        range: [1, 5] // Fixed range for all countries
+      }
     };
 
     Plotly.newPlot("arms-chart", [armsTrace], armsLayout);
     Plotly.newPlot("stability-chart", [stabilityTrace], stabilityLayout);
   }
-
-  // Reset zoom button
-  d3.select("#reset-zoom").on("click", () => {
-    d3.select("#map").select("svg").transition()
-      .duration(750)
-      .call(zoom.transform, d3.zoomIdentity); // Reset to the initial scale and position
-  });
 });
