@@ -16,8 +16,8 @@ const zoom = d3.zoom()
 // Attach zoom behavior to the SVG
 svg.call(zoom);
 
-// Load map data and render it (assuming a topoJSON format)
-d3.json("path/to/map-data.json").then((data) => {
+// Load map data and render it
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2.0.0/world/50m.json").then((data) => {
   const projection = d3.geoMercator().scale(150).translate([480, 300]);
   const path = d3.geoPath().projection(projection);
 
@@ -32,4 +32,6 @@ d3.json("path/to/map-data.json").then((data) => {
       // Handle country click
       console.log("Country clicked:", d.properties.name);
     });
+}).catch((error) => {
+  console.error("Error loading map data:", error);
 });
